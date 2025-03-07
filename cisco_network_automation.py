@@ -5,6 +5,13 @@ from getpass import getpass
 from textwrap import dedent
 from sys import exit
 from backup_conf import backup_conf
+from find_errdisable import find_err_disable
+
+def get_hosts_list(file_path):
+    '''return the list of hosts in the file'''
+    with open(file_path,  'r') as f:
+        hosts_list = f.read().splitlines()
+        return hosts_list  
 
 def get_credentials():
     print("[-] Insert credentials...")
@@ -18,9 +25,16 @@ def menu(clear_string):
         |              MAIN MENU              |
         =======================================
         | [1] Configuration backup            |
-        | [2] Option 2                        |
-        | [3] Option 3                        |
-        | [4] Exit                            |
+        | [2] Find errdisable interfaces      |
+        | [3] Find switch information         |
+        | [4] Find access interfaces on vlan  |
+        | [5] Find hubs                       |
+        | [6] Find PoE interfaces             |
+        | [7] Trace mac address               |
+        | [8] Draw network                    |
+        | [9] Send bulk commands              |
+        | [10] Re-input credentials           |
+        | [11] Exit                           |
         =======================================
     ''')
     # Clear screen
@@ -37,17 +51,23 @@ def main():
         print("\n\n")
         clear_string = "cls" if platform.system() == "Windows" else "clear"
         user, psw = get_credentials()
+
+        hosts = get_hosts_list('hosts.txt')
+
         while True:
             choice = menu(clear_string)
             if choice == 1:
                 # Perform configuration backup
                 print("[-] Configuration backup started...")
-                backup_conf(user, psw)
+                backup_conf(user, psw, hosts)
             elif choice == 2:
-                None
-            elif choice == 3:
-                None
-            elif choice == 4:
+                # Find errdisable interfaces
+                print("[-] Searching for errdisable interfaces...")
+                find_err_disable(user, psw, hosts)
+            elif choice == 10:
+                user, psw = get_credentials()
+                print("[-] Credentials changed")
+            elif choice == 11:
                 # Exit script
                 print("\n[-] Exiting...")
                 exit()

@@ -1,38 +1,24 @@
 # Import libraries
-import os, shutil
+import os
 import threading
-import sys
 import textwrap
+import sys
 
-from netmiko import ConnectHandler
+from netmiko import ConnectHandler  
 
+def write_output(logFile, out_list, hostname):
+    with open(logFile, "a") as file:
+        for entry in out_list:
+            file.write(f"[{hostname}] {entry}")
 
-def remove_old_conf_files(path):
-    ''' Remove all configuration files if any '''
-    for filename in os.listdir(path):
-        file_path = os.path.join(path, filename)
-        try:
-            if os.path.isfile(file_path) or os.path.islink(file_path):
-                os.unlink(file_path)
-            elif os.path.ispath(file_path):
-                shutil.rmtree(file_path)
-        except Exception as e:
-            print(f'[-] Failed to delete {file_path}. Reason: {e}')
-
-def write_backup(path, hostname, config):
-    ''' Write configuration to file in the conf directory '''
-    path = f"{path}{hostname}.conf"
-    with open(path, "w") as file:
-        print(f"[{hostname}] Configuration backup stored in {path}")
-        file.write(config)
-
-def connect_and_run_commands(host, user, psw, path):
+def connect_and_run_commands(host, user, psw):
     switch = {
             'device_type': 'cisco_ios',
             'ip': host,
             'username': user,
             'password': psw
         }          
+    command = "show int status | include err"
 
     # Retry 3 times to connect to the device (when connected breaks the cycle)
     for tries in range(2):
@@ -42,11 +28,22 @@ def connect_and_run_commands(host, user, psw, path):
 
             # Takes the prompt of the device and remove the #
             hostname = net_connect.find_prompt().replace("#", "")
-            net_connect.send_command("terminal length 0")
-            config = net_connect.send_command("show running")
+            out_list = list()
+            
+            # Send command to device and takes output
+            output = net_connect.send_command(command, max_loops = 2000)
+            # Append output to output list (it will be written in the output file)
+            output_row = output.replace('\n', '')
+            if output_row != '':
+                out_list.append(f"\n{output_row}\n")
 
+            # Writes the output to device's file
+            logFile = "output\errdisable_interfaces.txt" 
+            if out_list != []:
+                write_output(logFile, out_list, hostname)
+            else:
+                write_output(logFile, ["no errdisable interfaces"], hostname)
             net_connect.disconnect()
-            write_backup(path, hostname, config)
             break
 
         # Exit script if CTRL + C is pressed
@@ -67,17 +64,20 @@ def connect_and_run_commands(host, user, psw, path):
                 print(f'[-]/{host}/ connection error: \n{indented_error}')
                 sys.exit()
 
-def backup_conf(user, psw, hosts):
-    output_path = "output\\conf\\"
-    remove_old_conf_files(output_path)
+def find_err_disable(user, psw, hosts):
+    
+    try:
+        os.remove("output\errdisable_interfaces.txt")
+    except:
+        None
 
     threads = []
     for host in hosts:
-        thread = threading.Thread(target=connect_and_run_commands, args=(host, user, psw, output_path))
+        thread = threading.Thread(target=connect_and_run_commands, args=(host, user, psw))
         thread.start()
         threads.append(thread)
 
     for thread in threads:
         thread.join()
-
-    print('[-] Configuration backup completed!')
+    
+    print('[-] Search for errdisable interfaces completed!')
