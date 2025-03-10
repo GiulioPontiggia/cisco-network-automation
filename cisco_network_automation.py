@@ -5,6 +5,8 @@ from getpass import getpass
 from textwrap import dedent
 from sys import exit
 from backup_conf import backup_conf
+from find_access_interfaces_vlan import find_access_int
+from find_device_details import find_devices_details
 from find_errdisable import find_err_disable
 
 def get_hosts_list(file_path):
@@ -26,7 +28,7 @@ def menu(clear_string):
         =======================================
         | [1] Configuration backup            |
         | [2] Find errdisable interfaces      |
-        | [3] Find switch information         |
+        | [3] Find device information         |
         | [4] Find access interfaces on vlan  |
         | [5] Find hubs                       |
         | [6] Find PoE interfaces             |
@@ -64,6 +66,15 @@ def main():
                 # Find errdisable interfaces
                 print("[-] Searching for errdisable interfaces...")
                 find_err_disable(user, psw, hosts)
+            elif choice == 3:
+                # Find devices details
+                print("[-] Getting devices information...")
+                find_devices_details(user, psw, hosts)
+            elif choice == 4:
+                # Find access interfaces on a vlan
+                vlan = int(input("[*] Insert vlan ID: "))
+                print("[-] Getting access interfaces...")
+                find_access_int(user, psw, hosts, vlan)
             elif choice == 10:
                 user, psw = get_credentials()
                 print("[-] Credentials changed")
